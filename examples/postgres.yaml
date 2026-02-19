@@ -1,0 +1,49 @@
+# Service Watchdog - PostgreSQL Configuration Example
+# Monitor PostgreSQL database server
+
+log_file: /var/log/service-watchdog/postgres.log
+log_level: INFO
+state_file: /var/lib/service-watchdog/postgres-state.json
+
+services:
+  - name: postgresql
+    enabled: true
+    
+    # Detect by port (PostgreSQL default)
+    port: 5432
+    
+    # Alternative: detect by process name
+    # process_name: postgres
+    
+    # Restart commands
+    restart_command: systemctl restart postgresql
+    stop_command: systemctl stop postgresql
+    start_command: systemctl start postgresql
+    
+    # Database restarts are sensitive - wait longer
+    restart_delay: 60
+    
+    # Conservative restart limits
+    max_restarts: 2
+    restart_window: 3600
+    
+    # Check every minute, alert after 3 failures
+    # (databases may have momentary connection issues)
+    check_interval: 60
+    failure_threshold: 3
+
+notifiers:
+  - type: slack
+    enabled: true
+    webhook_url: ${SLACK_WEBHOOK_URL}
+    
+  - type: email
+    enabled: true
+    smtp_host: smtp.company.com
+    smtp_port: 587
+    smtp_user: ${SMTP_USER}
+    smtp_password: ${SMTP_PASSWORD}
+    from_addr: alerts@company.com
+    to_addrs:
+      - dba-team@company.com
+      - oncall@company.com

@@ -1,0 +1,112 @@
+# Service Watchdog - Multi-Service Stack Example
+# Monitor a complete application stack: nginx + app + database + redis
+
+log_file: /var/log/service-watchdog/stack.log
+log_level: INFO
+pid_file: /var/run/service-watchdog.pid
+state_file: /var/lib/service-watchdog/stack-state.json
+
+services:
+  # Reverse proxy / load balancer
+  - name: nginx
+    enabled: true
+    process_name: nginx
+    port: 80
+    health_url: http://127.0.0.1/health
+    restart_command: systemctl restart nginx
+    check_interval: 15
+    failure_threshold: 2
+    restart_delay: 10
+    max_restarts: 5
+    restart_window: 3600
+
+  # Main application (Python/Django)
+  - name: django-app
+    enabled: true
+    port: 8000
+    health_url: http://127.0.0.1:8000/api/health/
+    restart_command: systemctl restart gunicorn
+    working_dir: /opt/django-app
+    env:
+      DJANGO_SETTINGS_MODULE: config.production
+    check_interval: 20
+    failure_threshold: 2
+    restart_delay: 15
+    max_restarts: 3
+    restart_window: 1800
+
+  # Background task processor (Celery)
+  - name: celery-worker
+    enabled: true
+    process_name: celery
+    restart_command: systemctl restart celery-worker
+    check_interval: 30
+    failure_threshold: 3
+    restart_delay: 20
+    max_restarts: 3
+    restart_window: 1800
+
+  # Database
+  - name: postgresql
+    enabled: true
+    port: 5432
+    restart_command: systemctl restart postgresql
+    check_interval: 60
+    failure_threshold: 3
+    restart_delay: 60
+    max_restarts: 2
+    restart_window: 7200
+
+  # Cache layer
+  - name: redis
+    enabled: true
+    port: 6379
+    restart_command: systemctl restart redis
+    check_interval: 30
+    failure_threshold: 2
+    restart_delay: 10
+    max_restarts: 5
+    restart_window: 3600
+
+notifiers:
+  # Primary: Telegram for instant alerts
+  - type: telegram
+    enabled: true
+    bot_token: ${TELEGRAM_BOT_TOKEN}
+    chat_id: ${TELEGRAM_CHAT_ID}
+    on_failure: true
+    on_recovery: true
+    on_restart: true
+
+  # Secondary: Slack for team visibility
+  - type: slack
+    enabled: true
+    webhook_url: ${SLACK_WEBHOOK_URL}
+    on_failure: true
+    on_recovery: true
+    on_restart: false  # Reduce noise
+
+  # Email for critical failures only
+  - type: email
+    enabled: true
+    smtp_host: smtp.company.com
+    smtp_port: 587
+    smtp_user: ${SMTP_USER}
+    smtp_password: ${SMTP_PASSWORD}
+    from_addr: watchdog@company.com
+    to_addrs:
+      - ops-team@company.com
+    on_failure: true
+    on_recovery: false
+    on_restart: false
+
+  # Webhook for PagerDuty/OpsGenie integration
+  - type: webhook
+    enabled: true
+    url: https://events.pagerduty.com/v2/enqueue
+    method: POST
+    headers:
+      Content-Type: application/json
+    on_failure: true
+    on_recovery: true
+    on_restart: false

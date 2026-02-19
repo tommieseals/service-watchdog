@@ -1,0 +1,75 @@
+# Service Watchdog - Docker Containers Example
+# Monitor Docker containers using health checks
+
+log_file: /var/log/service-watchdog/docker.log
+log_level: INFO
+state_file: /var/lib/service-watchdog/docker-state.json
+
+services:
+  # Web application container
+  - name: web-container
+    enabled: true
+    # Check container's exposed port
+    port: 8080
+    health_url: http://localhost:8080/health
+    
+    # Docker restart commands
+    restart_command: docker restart web-app
+    stop_command: docker stop web-app
+    start_command: docker start web-app
+    
+    check_interval: 20
+    failure_threshold: 2
+    restart_delay: 10
+    max_restarts: 5
+    restart_window: 1800
+
+  # API container
+  - name: api-container
+    enabled: true
+    port: 3000
+    health_url: http://localhost:3000/api/ping
+    
+    restart_command: docker-compose -f /opt/app/docker-compose.yml restart api
+    working_dir: /opt/app
+    
+    check_interval: 15
+    failure_threshold: 2
+    restart_delay: 15
+    max_restarts: 3
+    restart_window: 1800
+
+  # Database container (use port check only)
+  - name: db-container
+    enabled: true
+    port: 5432
+    
+    restart_command: docker restart postgres-db
+    check_interval: 30
+    failure_threshold: 3
+    restart_delay: 30
+    max_restarts: 2
+    restart_window: 3600
+
+  # Redis container
+  - name: redis-container
+    enabled: true
+    port: 6379
+    
+    restart_command: docker restart redis-cache
+    check_interval: 20
+    failure_threshold: 2
+    restart_delay: 5
+    max_restarts: 5
+    restart_window: 1800
+
+notifiers:
+  - type: telegram
+    enabled: true
+    bot_token: ${TELEGRAM_BOT_TOKEN}
+    chat_id: ${TELEGRAM_CHAT_ID}
+
+  - type: webhook
+    enabled: true
+    url: ${ALERTMANAGER_URL}/api/v1/alerts
+    method: POST

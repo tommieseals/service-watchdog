@@ -1,0 +1,61 @@
+# Service Watchdog - Node.js Application Example
+# Monitor a Node.js/Express application
+
+log_file: /var/log/service-watchdog/node-app.log
+log_level: INFO
+state_file: /var/lib/service-watchdog/node-app-state.json
+
+services:
+  - name: my-express-app
+    enabled: true
+    
+    # Primary: health endpoint check
+    health_url: http://localhost:3000/api/health
+    health_timeout: 10
+    
+    # Fallback: port check
+    port: 3000
+    
+    # Using PM2 for process management
+    restart_command: pm2 restart my-app --update-env
+    stop_command: pm2 stop my-app
+    start_command: pm2 start my-app
+    
+    # Working directory for commands
+    working_dir: /opt/my-app
+    
+    # Environment variables for the process
+    env:
+      NODE_ENV: production
+      PORT: "3000"
+    
+    # Node apps restart quickly
+    restart_delay: 10
+    max_restarts: 5
+    restart_window: 900  # 15 minutes
+    
+    # Frequent checks for web apps
+    check_interval: 15
+    failure_threshold: 2
+
+  # Example: Background worker process
+  - name: my-worker
+    enabled: true
+    process_name: node
+    pid_file: /var/run/my-worker.pid
+    
+    restart_command: pm2 restart my-worker
+    restart_delay: 5
+    check_interval: 30
+    failure_threshold: 3
+
+notifiers:
+  - type: telegram
+    enabled: true
+    bot_token: ${TELEGRAM_BOT_TOKEN}
+    chat_id: ${TELEGRAM_CHAT_ID}
+    
+  - type: webhook
+    enabled: true
+    url: https://hooks.slack.com/services/xxx/yyy/zzz
+    method: POST

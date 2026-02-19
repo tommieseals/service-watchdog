@@ -1,0 +1,38 @@
+[Unit]
+Description=Service Watchdog - Process monitoring daemon
+Documentation=https://github.com/tommieseals/service-watchdog
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+
+# Main command
+ExecStart=/usr/local/bin/service-watchdog run -c /etc/service-watchdog/config.yaml
+
+# Graceful shutdown
+ExecStop=/bin/kill -SIGTERM $MAINPID
+TimeoutStopSec=30
+
+# Restart policy for the watchdog itself
+Restart=on-failure
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=service-watchdog
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/log/service-watchdog /var/lib/service-watchdog /var/run
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
