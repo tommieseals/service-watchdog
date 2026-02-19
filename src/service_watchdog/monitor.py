@@ -1,10 +1,12 @@
 """Service monitoring logic."""
 
+from __future__ import annotations
+
 import socket
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import psutil
 import requests
@@ -129,18 +131,22 @@ class ServiceMonitor:
         finally:
             sock.close()
 
-        # Try to find the process using this port
+        # Try to find the process using this port (may require elevated permissions)
         if status.running:
-            for conn in psutil.net_connections(kind="inet"):
-                if conn.laddr.port == self.config.port and conn.status == "LISTEN":
-                    try:
-                        proc = psutil.Process(conn.pid)
-                        status.pid = conn.pid
-                        status.cpu_percent = proc.cpu_percent()
-                        status.memory_mb = proc.memory_info().rss / (1024 * 1024)
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        pass
-                    break
+            try:
+                for conn in psutil.net_connections(kind="inet"):
+                    if conn.laddr.port == self.config.port and conn.status == "LISTEN":
+                        try:
+                            proc = psutil.Process(conn.pid)
+                            status.pid = conn.pid
+                            status.cpu_percent = proc.cpu_percent()
+                            status.memory_mb = proc.memory_info().rss / (1024 * 1024)
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            pass
+                        break
+            except psutil.AccessDenied:
+                # macOS and some Linux systems require root to enumerate connections
+                pass
 
         return status
 

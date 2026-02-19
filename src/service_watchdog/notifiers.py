@@ -1,5 +1,7 @@
 """Notification plugins for Service Watchdog."""
 
+from __future__ import annotations
+
 import json
 import smtplib
 import ssl
@@ -7,7 +9,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Optional
+from typing import Optional, Tuple
 
 import requests
 
