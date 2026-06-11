@@ -1,0 +1,39 @@
+# Service Watchdog - Nginx Configuration Example
+# Monitor nginx web server with health checks
+
+log_file: /var/log/service-watchdog/nginx.log
+log_level: INFO
+state_file: /var/lib/service-watchdog/nginx-state.json
+
+services:
+  - name: nginx
+    enabled: true
+    
+    # Multiple detection methods (failover)
+    process_name: nginx
+    port: 80
+    health_url: http://127.0.0.1/health
+    health_timeout: 5
+    
+    # Restart using systemctl
+    restart_command: systemctl restart nginx
+    stop_command: systemctl stop nginx
+    start_command: systemctl start nginx
+    
+    # Wait 30 seconds before attempting restart
+    # (gives time for transient issues to resolve)
+    restart_delay: 30
+    
+    # Allow max 5 restarts per hour
+    max_restarts: 5
+    restart_window: 3600
+    
+    # Check every 15 seconds, alert after 2 failures
+    check_interval: 15
+    failure_threshold: 2
+
+notifiers:
+  - type: telegram
+    enabled: true
+    bot_token: ${TELEGRAM_BOT_TOKEN}
+    chat_id: ${TELEGRAM_CHAT_ID}
